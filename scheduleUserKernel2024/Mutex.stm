@@ -1,0 +1,188 @@
+# Author: Dale E. Parson. STUDENT: Replace my name with yours for the
+#       .stm files that you create.
+# Creation Date: February 15, 2020
+# Due Date: Wednesday March 18 by 11:59 PM via 'make turnitin'
+# Course: CSC 343 Operating Systems
+# Professor Name: Dale E. Parson
+# Assignment: #2
+# Filename: Mutex.stm
+# Purpose: Run processor.contextCount Producer threads in 1 process pid==0,
+#          processor.contextCount Consumer threads in 1 process pid==1,
+#          (processor.contextCount is set on the simulator's command line),
+#          and pass data from all Producers to all Consumers via 1 global
+#          data structure processor.messageBuffer that simulates inter-process
+#          shared memory in the kernel. Unsafe.stm uses a single-element list
+#          to store a datum, storing None when no datum is present.
+#          Students must rewrite Unsafe.stm into variations that use
+#          specified synchronization mechanisms to eliminate any race
+#          condition and solve the critical section problem.
+# STUDENT COMMENTS UNIQUE TO THIS SOLUTION FILE GO HERE.
+#   Atomic.stm uses an atomic variable in processor.thelock to serialize
+#       access to the shared data critical section.
+#   Mutex.stm replaces that by using processor.thelock as a mutex lock and
+#       processor.mqueue as a queue of threads waiting for access to 
+#       processor.thelock. In Mutex.stm, processor.thelock protects the
+#       processor.messageBuffer, and processor.mqueue holds threads waiting
+#       to lock processor.thelock.
+
+# fork() two processes. Process ID 0 is the Producer, and ID 1
+# is the Consumer. The processor also holds the messageBuffer through
+# which Producer threads pass data to Consumer threads.
+machine processor {
+    processesToGo = 2, tid=0, pid=0 ;
+    start init, state forkingProcesses, accept doneForkingProcesses ;
+    init -> forkingProcesses init()[]/@
+        # STUDENT, your additional kernel data structures go here.
+        # All Producer threads pass data via messageBuffer to Consumers.
+        processor.messageBuffer = [None] ;
+        # processor.thelock is the atomic spin lock for Atomic.stm
+        # processor.thelock is the blocking mutex for Mutex.stm and Convar.stm.
+        processor.thelock = False ;
+        # processor.mqueue is the queue of threads waiting on thelock
+        # in Mutex.stm. Do not use it in Atomic.stm. Also, Condvar.stm
+        # uses distinct processor.pqueue and processor.cqueue for
+        # stalling Producer and Consumer threads respectively.
+        processor.mqueue = Queue(False) ;
+        # Increment the sequence number atomically for each message.
+        processor.sequenceNumber = 1 ;
+        processesToGo -= 1 ; fork()@
+    forkingProcesses -> forkingProcesses fork(pid, tid)[@processesToGo > 0@]/@
+        processesToGo -= 1 ; fork()@
+    forkingProcesses -> doneForkingProcesses fork(pid, tid)[@processesToGo == 0@]/
+}
+
+# The thread state machine implements both the Producer and Consumer
+# processes, where an even process ID is a Producer, and odd is a Consumer,
+# and each runs processor.contextCount threads.
+machine thread {
+    numThreadsToSpawn = 0, numMessagesPerThread = 100,
+        haveLock = @False@, product = 0 ;
+    start init, state spawningThreads,
+        # The next are Producer states:
+        state makeProduct, state produceProduct, state spinProducer,
+        # The next are Consumer states:
+        state recvFromProducer, state consumeProduct, state spinConsumer,
+        # stallProducer and stallConsumer are used only in blocking solutions.
+        state stallProducer, state stallConsumer,
+        accept done ;
+    init -> spawningThreads init()[]/@
+        machineid, processid, threadid = getid();
+        numThreadsToSpawn = processor.contextCount - 1 ;
+        # Thread 0 is already running, it spawns numThreadsToSpawn more.
+        yieldcpu()@
+    # Only thread 0 spawns the other threads in this solution.
+    spawningThreads -> spawningThreads yieldcpu()[@threadid == 0
+                        and numThreadsToSpawn > 0@]/@
+        numThreadsToSpawn -= 1 ;
+        # IGNORE THIS INFO FROM COMPILER CAUSED BY NEXT LINE. We will discuss.
+        # INFO: Blocking function spawn is in mid-transition from
+        #   thread.spawningThreads -> spawningThreads, so its completion event
+        #   will not trigger a state change.
+        spawn(); yieldcpu()@
+    # Use bitwise & on bottom bit of processid to find even/odd.
+    # Even is Producer, odd is Consumer.
+    # Thread 0 must wait until numThreadsToSpawn == 0. Others do not wait.
+    spawningThreads -> makeProduct yieldcpu()[@(processid & 1) == 0
+            and (threadid > 0 or numThreadsToSpawn == 0)@]/@
+        # This is the start of a Producer.
+        cpu(10)@
+    spawningThreads -> recvFromProducer yieldcpu()[@(processid & 1) == 1
+            and (threadid > 0 or numThreadsToSpawn == 0)@]/@
+        # This is the start of a Consumer.
+        cpu(1)@
+    makeProduct -> spinProducer cpu()[]/@
+        # This transition uses processor.sequenceNumber is an atomic integer.
+        product = processor.sequenceNumber ;
+        processor.sequenceNumber += 1 ;
+        # Each thread state machine has its own local variables:
+        numMessagesPerThread -= 1 ;
+        cpu(1)@
+    # Unsafe.stm neither spins nor blocks. STUDENT solutions will
+    # either spin (Atomic.stm and AtomicQ.stm) or block (Mutex.stm
+    # and MutexQ.stm).
+    spinProducer -> produceProduct cpu()[@haveLock
+            and processor.messageBuffer[0] == None@]/@
+        processor.messageBuffer[0] = product ;
+        processor.thelock = False ;
+        haveLock = False ;
+        msg("spinProducer -> produceProduct released lock");
+        if len(processor.mqueue): signalEvent(processor.mqueue.deq(), 'unlocked') ;
+        cpu(1)@
+    # stallProducer and stallConsumer are used only in blocking solutions.
+    spinProducer -> stallProducer cpu()[@(not haveLock)
+                and processor.thelock@]/@
+        processor.mqueue.enq(thread);
+        waitForEvent('unlocked', True)@
+    spinProducer -> spinProducer cpu()[@(not haveLock)
+                and (not processor.thelock)@]/@
+        processor.thelock = True ;
+        haveLock = True ;
+        msg("spinProducer -> spinProducer acquired lock");
+        cpu(1)@
+    spinProducer -> spinProducer cpu()[@haveLock
+                and processor.messageBuffer[0] != None@]/@
+        processor.thelock = False ;
+        haveLock = False ;
+        msg("spinProducer -> spinProducer released lock");
+        if len(processor.mqueue): signalEvent(processor.mqueue.deq(), 'unlocked') ;
+        cpu(1)@
+    stallProducer -> stallProducer unlocked()[@(not haveLock)
+                and processor.thelock@]/@
+        processor.mqueue.enq(thread);
+        waitForEvent('unlocked', True)@
+    stallProducer -> spinProducer unlocked()[@(not haveLock)
+                and (not processor.thelock)@]/@
+        cpu(0)@
+    produceProduct -> makeProduct cpu()[@numMessagesPerThread > 0@]/@
+        cpu(1)@
+    produceProduct -> done cpu()[@numMessagesPerThread == 0@]/@
+        msg("Producer done.")@
+    recvFromProducer -> spinConsumer cpu()[]/@
+        cpu(1)@
+    spinConsumer -> consumeProduct cpu()[@haveLock
+            and processor.messageBuffer[0] != None@]/@
+        product = processor.messageBuffer[0];
+        # Remove the message from the buffer.
+        processor.messageBuffer[0] = None ;
+        processor.thelock = False ;
+        haveLock = False ;
+        msg("spinConsumer -> consumeProduct released lock");
+        if len(processor.mqueue): signalEvent(processor.mqueue.deq(), 'unlocked') ;
+        msg(":" + str(product) + " product value CONSUMED: by process " + str(processid) + ", thread " + str(threadid));
+        # STUDENT: Leave above statement intact as it is for my testing.
+        numMessagesPerThread -= 1 ;
+        # The next line ensures transition thru a state that reassigns product.
+        product = "BUG INVALID PRODUCT" ;
+        cpu(1)@
+    # stallProducer and stallConsumer are used only in blocking solutions.
+    spinConsumer -> stallConsumer cpu()[@(not haveLock)
+                and processor.thelock@]/@
+        processor.mqueue.enq(thread);
+        waitForEvent('unlocked', True)@
+    spinConsumer -> spinConsumer cpu()[@(not haveLock)
+                and (not processor.thelock)@]/@
+        processor.thelock = True ;
+        haveLock = True ;
+        msg("spinConsumer -> spinConsumer acquired lock");
+        cpu(1)@
+    spinConsumer -> spinConsumer cpu()[@haveLock
+                and processor.messageBuffer[0] == None@]/@
+        processor.thelock = False ;
+        haveLock = False ;
+        msg("spinConsumer -> spinConsumer released lock");
+        if len(processor.mqueue): signalEvent(processor.mqueue.deq(), 'unlocked') ;
+        cpu(1)@
+    stallConsumer -> stallConsumer unlocked()[@(not haveLock)
+                and processor.thelock@]/@
+        processor.mqueue.enq(thread);
+        waitForEvent('unlocked', True)@
+    stallConsumer -> spinConsumer unlocked()[@(not haveLock)
+                and (not processor.thelock)@]/@
+        cpu(0)@
+    consumeProduct -> recvFromProducer cpu()[@numMessagesPerThread > 0@]/@
+        cpu(1)@
+    consumeProduct -> done cpu()[@numMessagesPerThread == 0@]/@
+        msg("Consumer done.")@
+}
+
+processor

@@ -1,0 +1,130 @@
+# ************************************************************
+# * Student Author: Ryan Livinghouse
+# * Major: Information Technology
+# * Creation Date: 2/24/2024
+# * Due Date: March 14, 2024
+# * Course: CSC343
+# * Professor Name: Dr. Parson
+# * Assignment: #2
+# * Filename: ManyToOne.stm
+# * Simulate many-to-one User mode -to- Kernel mode thread scheduling.
+# * See http://faculty.kutztown.edu/parson/secure/osconcepts9th/ch4.ppt
+# * slides 13 through 16.
+# ************************************************************
+
+# STUDENT 1 (5%) Complete the documentation comment block above.
+# In each STUDENT-supplied requirement below, one line of comment
+# preceding the STUDENT code is already in place. Comments in the STM language
+# must not mix with code in the same line. These 5 points are for all 3
+# of your STM files, i.e., NOT 5% X 3 = 15. Make sure to update
+# "one-to-one" comment above in your other 2 files.
+##### !!! STUDENT: See upper case STUDENT comments for your work.
+
+machine processor {
+    # STUDENT: You have 1 change to the processor state machine.
+    # Use this machine in in assignment 1 to start thread
+    # state machines, in which each one is a multi-threaded process.
+    # Any field in object processor is visible to all thread state machines.
+    # Such fields simulate kernel data in physical memory in the machine.
+    # Use the @@ delimiters around non-numeric Python data types.
+    # Using @@ passes the source code directly to Python.
+    # Use matching "double quotes" to delimit strings.
+    # Use "and" or "or" instead of "&&" or "||" in boolean guard expressions.
+    # SEE STM LIBRARY DOCUMENTATION IN STM.doc.txt.
+    processesToGo = 50, tid = -1, pid = -1;
+    start init, state makingProcesses, accept processorDone ;
+    init -> makingProcesses init()[]/@
+        # For one-to-one processor.KernelRegions is not used.
+        # For many-to-one processor.KernelRegions is set to 1.
+        # STUDENT 5% applies only to ManyToMany.stm.
+        # STUDENT For ManyToMany set processor.KernelRegions to 3.
+        # For many-to-many ("many-to-fewer") it is 3 for 3 kernel
+        # regions that may be entered.
+        processor.KernelRegions = 1 ;
+        # Where to wait to enter the kernel for many-to-one and many-to-many.
+        # These are FIFO queues.
+        processor.WaitQueues = [Queue(False)
+            for i in range(0, processor.KernelRegions)];
+        # Many-to-one or many-to-many wait in processor.WaitQueues[region] when
+        # the KernelLock[region] is 1.
+        processor.KernelLock = [0 for i in range(0, processor.KernelRegions)];
+        processesToGo -= 1 ; fork()@
+    makingProcesses -> makingProcesses fork(pid, tid)[@processesToGo > 0@]/@
+        processesToGo -= 1 ; fork()@
+    makingProcesses -> processorDone fork(pid, tid)[@processesToGo == 0@]/
+}
+
+machine thread {
+    # You must declare variables here or on transition init ->
+    # You may need to create additional variables.
+    # Each process is single-threaded in this model.
+    cpuTicksInUserOrKernel = 0, userTicks = 1000, kernelTicks = 500,
+    testRunsToGo = 100, region = 0 ;
+    # See project documentation for state diagram. See also 
+    # https://kuvapcsitrd01.kutztown.edu/~parson/OneToOne.jpg
+    start init, state userMode, state kernelMode,
+        state stallThread, accept done ;
+    # All threads of execution start in state init.
+    init -> userMode init()[]/@
+        machineID, pid, tid = getid();
+        # STUDENT 5% applies only to ManyToOne.stm. ManyToMany.stm "inherits"
+        # this update when you copy ManyToOne.stm to ManyToMany.stm.
+        # STUDENT In ManyToOne.stm and ManyToMany.stm set a new variable
+        # called region to a pseudo-random value between 0 and
+        # processor.KernelRegions-1 INCLUSIVE using uniform random 
+        # distribution. See Assignment 1 for the 'uniform' call to sample.
+        
+        region = sample(0, processor.KernelRegions-1, "uniform");
+        
+        cpuTicksInUserOrKernel = userTicks ;
+        cpu(cpuTicksInUserOrKernel)@
+    # STUDENT 20% applies only to ManyToOne.stm. ManyToMany.stm "inherits"
+    # this update when you copy ManyToOne.stm to ManyToMany.stm.
+    # STUDENT In userMode -> stallThread set the guard condition to
+    # satisfied when processor.KernelLock[region] is locked.
+    # The actions are to enq this thread in processor.WaitQueues[region]
+    # and then waitForEvent 'unlocked', removing the cpu(1) final action.
+    # See Mutex.stm for examples of queue.eng(thread), where queue is a Queue.
+    userMode -> stallThread cpu()[@processor.KernelLock[region] == 1@]/@
+        processor.WaitQueues[region].enq(self);
+        waitForEvent('unlocked')@
+    # STUDENT 5% applies only to ManyToOne.stm. ManyToMany.stm "inherits"
+    # this update when you copy ManyToOne.stm to ManyToMany.stm.
+    # STUDENT In stallThread -> userMode change the incoming event from
+    # cpu() to unlocked().
+    stallThread -> userMode unlocked()[]/@
+        cpu(10)@
+    # STUDENT 20% applies only to ManyToOne.stm. ManyToMany.stm "inherits"
+    # this update when you copy ManyToOne.stm to ManyToMany.stm.
+    # STUDENT In userMode -> kernelMode set the guard condition to
+    # be satisfied when processor.KernelLock[region] is NOT locked.
+    # The actions stay the same EXCEPT add one action before
+    # cpu(cpuTicksInUserOrKernel) that locks processor.KernelLock[region].
+    userMode -> kernelMode cpu()[@processor.KernelLock[region] == 0@]/@
+        processor.KernelLock[region] = 1;
+        testRunsToGo -= 1 ;
+        cpuTicksInUserOrKernel = kernelTicks ;
+        
+        cpu(cpuTicksInUserOrKernel)@
+    # STUDENT 20% applies only to ManyToOne.stm. ManyToMany.stm "inherits"
+    # this update when you copy ManyToOne.stm to ManyToMany.stm.
+    # Before the final cpu() action unlock the processor.KernelLock[region]
+    # and then send an unlocked event to the thread at the front of the
+    # processor.WaitQueues[region] if there is one. See Mutex.stm for examples
+    # of conditional queue.deq(), where queue is a non-empty Queue.
+    kernelMode -> userMode cpu()[@testRunsToGo > 0@]/@
+        processor.KernelLock[region] = 0;
+        # FROM CLASS DISCUSSION:
+        # Check if there are any threads waiting to access the kernel
+        # in the current region's queue
+        # If the wait queue for the current kernel region is not empty,
+        # then a thread is waiting for the lock
+        if len(processor.WaitQueues[region]) > 0:
+            signalEvent(processor.WaitQueues[region].deq(), 'unlocked');
+        cpuTicksInUserOrKernel = userTicks;
+        cpu(cpuTicksInUserOrKernel)@
+
+    kernelMode -> done cpu()[@testRunsToGo == 0@]/
+}
+
+processor

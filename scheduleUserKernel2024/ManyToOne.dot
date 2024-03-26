@@ -1,0 +1,23 @@
+digraph "ManyToOne.dot" {
+    subgraph "processor" {
+        "processor_init" [shape=triangle, label="processor:init:0"];
+        "processor_makingProcesses" [shape=ellipse, label="processor:makingProcesses:1"];
+        "processor_processorDone" [shape=octagon, label="processor:processorDone:2"];
+        "processor_init" -> "processor_makingProcesses" [label = "init:0"];
+        "processor_makingProcesses" -> "processor_makingProcesses" [label = "fork:0"];
+        "processor_makingProcesses" -> "processor_processorDone" [label = "fork:1"];
+    }
+    subgraph "thread" {
+        "thread_init" [shape=triangle, label="thread:init:3"];
+        "thread_userMode" [shape=ellipse, label="thread:userMode:4"];
+        "thread_kernelMode" [shape=ellipse, label="thread:kernelMode:5"];
+        "thread_stallThread" [shape=ellipse, label="thread:stallThread:6"];
+        "thread_done" [shape=octagon, label="thread:done:7"];
+        "thread_init" -> "thread_userMode" [label = "init:0"];
+        "thread_userMode" -> "thread_stallThread" [label = "cpu:0"];
+        "thread_userMode" -> "thread_kernelMode" [label = "cpu:1"];
+        "thread_kernelMode" -> "thread_userMode" [label = "cpu:0"];
+        "thread_kernelMode" -> "thread_done" [label = "cpu:1"];
+        "thread_stallThread" -> "thread_userMode" [label = "unlocked:0"];
+    }
+}
