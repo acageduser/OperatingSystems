@@ -1,0 +1,128 @@
+# ************************************************************
+# * Student Author: Ryan Livinghouse
+# * Major: Information Technology
+# * Creation Date: 3/10/2024
+# * Due Date: April 11, 2024 @ 11:59 PM
+# * Course: CSC343
+# * Professor Name: Dr. Parson
+# * Assignment: #3
+# * Filename: sjf.stm
+# * STUDENT: Fill in the blanks and update comments below, changing
+# * from RR to FCFS, SJF, SJFEST, and SRTF in those STM files as
+# * instructed by the assignment handout.
+# *
+# * SHORTEST JOB FIRST:
+# * This file implements the Shortest Job First (SJF) scheduling
+# * algorithm for thread-to-context scheduling. SJF selects the thread with the
+# * shortest CPU burst time to run next, adding to the job completion efficiency.
+# * This implementation is non-preemptive, with threads running to completion
+# * once they begin execution. It utilizes a priority queue based on CPU burst
+# * lengths to determine the thread scheduling order.
+# *
+# * USE:
+# * make testsjf
+# ************************************************************
+
+machine processor {
+    # Use this machine to start threads, with a modified queue to support SJF.
+    processesToGo = 10, pid = -1, tid = -1 ;
+    start init, state makingThreads, accept doneStartingThreads ;
+    init -> makingThreads init()[]/@processesToGo -= 1 ;
+        #change false to true
+        processor.readyQ = Queue(True) ; fork()@
+    makingThreads -> makingThreads fork(pid, tid)[@processesToGo > 0@]/@
+        processesToGo -= 1 ; fork()@
+    makingThreads -> doneStartingThreads fork(pid, tid)[@processesToGo == 0@]/
+}
+
+machine thread {
+    # Updated for SJF specs, removing quantum.
+    machineid = -1, pid = -1, tid = -1, iobound = @False@,
+        endtime = 100000, iodevice = 0 ;
+    # The transition out of state init initializes the above variables.
+    start init, state scheduling, state ready, state running, state waiting,
+        state rescheduling, accept terminated ;
+
+    # UPDATED:
+    # Initialize variables and set up for SJF scheduling.
+    init -> scheduling init()[]/@machineid, pid, tid = getid();
+        iobound = True if ((pid % 2) == 1) else False ;
+        # UPDATED:
+        # ^^^ The odd pids are IO bound.
+        # The others (50%) are CPU bound. This job mix stresses the scheduling
+        # algorithms better than a strictly IO-bound or CPU-bound mix.
+        # Set cpuTicksB4IO when going into scheduling.
+        cpuTicksB4IO = sample(1, 250, 'exponential', 25) if iobound
+            else sample(100, 1100, 'revexponential', 1000);
+        # Run the full CPU burst in FCFS here
+        tickstorun = cpuTicksB4IO;
+        yieldcpu()@
+    
+    # UPDATED:
+    # Reflect SJF logic in ready queue.
+    scheduling -> running yieldcpu()[@processor.contextsFree > 0@]/@
+        processor.contextsFree -= 1 ;
+        cpu(tickstorun)@
+
+    # scheduling -> ready places a ready-to-run thread into processor.readyQ,
+    # which is a FIFO queue for round robin,, and then waits for
+    # event contextAvailable from another thread releasing a context.
+    scheduling -> ready yieldcpu()[@processor.contextsFree == 0@]/@
+        # Put myself in processor's readyQ. rr uses a fifo queue.
+        processor.readyQ.enq(thread, cpuTicksB4IO);
+        waitForEvent('contextAvailable', False)@
+
+    # After receiving a contextAvailable event from a thread releasing a
+    # context, ready -> scheduling sends its thread back to try for a
+    # context again.
+    ready -> scheduling contextAvailable()[]/@yieldcpu()@
+    # ^^^ Do not set cpuTicksB4IO; they have not all been used.
+
+    # When a threads current context time is completed, it releases
+    # its context,  wakes up a thread at the front of the processor.readyQ
+    # if there is one with a contextAvailable event, and goes to
+    # the rescheduling state.
+    running -> rescheduling cpu()[]/@
+        processor.contextsFree += 1 ;
+        signalEvent(processor.readyQ.deq(), 'contextAvailable', 0)
+            if len(processor.readyQ) > 0 else 0;
+        yieldcpu()@
+
+# ************************************************************
+    # Standard transitions for SJF, similar to FCFS but with priority queue.
+# ************************************************************
+
+    # When simulation time is expired, terminate.
+    rescheduling -> terminated yieldcpu()[@time() >= endtime@]/
+
+    # When simulation time is not expired and there are no remaining
+    # CPU ticks from preemption in tickstodefer, start a blocking IO request.
+    # See STUDENT instructions.
+    rescheduling -> waiting yieldcpu()[@time() < endtime@]/@
+        # Pick iodevice of -1 (process terminal) or one of the fastio devices.
+        iodevice = sample(-1, len(processor.fastio)-1, 'uniform');
+        io(iodevice)@
+
+    # When simulation time is not expired and there are some remaining
+    # CPU ticks from preemption in tickstodefer, go back to state scheduling
+    # to resume execution of the CPU burst.
+    # See STUDENT instructions.
+    rescheduling -> scheduling yieldcpu()[@time() < endtime@]/@
+        tickstorun = cpuTicksB4IO;
+        yieldcpu()@
+
+# ************************************************************
+
+
+    # When blocking IO completes, go back to state scheduling for the next
+    # CPU burst after computing a new cpuTicksB4IO, tickstorun, tickstodefer
+    # and possibly other variables per handout instructions (STUDENT).
+    waiting -> scheduling io()[]/@
+        cpuTicksB4IO = sample(1, 250, 'exponential', 25) if iobound
+            else sample(100, 1100, 'revexponential', 1000);
+        # full CPU burst
+        tickstorun = cpuTicksB4IO;
+        yieldcpu()@
+}
+
+processor

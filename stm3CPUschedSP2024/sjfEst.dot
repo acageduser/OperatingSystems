@@ -1,0 +1,28 @@
+digraph "sjfEst.dot" {
+    subgraph "processor" {
+        "processor_init" [shape=triangle, label="processor:init:0"];
+        "processor_makingThreads" [shape=ellipse, label="processor:makingThreads:1"];
+        "processor_doneStartingThreads" [shape=octagon, label="processor:doneStartingThreads:2"];
+        "processor_init" -> "processor_makingThreads" [label = "init:0"];
+        "processor_makingThreads" -> "processor_makingThreads" [label = "fork:0"];
+        "processor_makingThreads" -> "processor_doneStartingThreads" [label = "fork:1"];
+    }
+    subgraph "thread" {
+        "thread_init" [shape=triangle, label="thread:init:3"];
+        "thread_scheduling" [shape=ellipse, label="thread:scheduling:4"];
+        "thread_ready" [shape=ellipse, label="thread:ready:5"];
+        "thread_running" [shape=ellipse, label="thread:running:6"];
+        "thread_waiting" [shape=ellipse, label="thread:waiting:7"];
+        "thread_rescheduling" [shape=ellipse, label="thread:rescheduling:8"];
+        "thread_terminated" [shape=octagon, label="thread:terminated:9"];
+        "thread_init" -> "thread_scheduling" [label = "init:0"];
+        "thread_scheduling" -> "thread_running" [label = "yieldcpu:0"];
+        "thread_scheduling" -> "thread_ready" [label = "yieldcpu:1"];
+        "thread_ready" -> "thread_scheduling" [label = "contextAvailable:0"];
+        "thread_running" -> "thread_rescheduling" [label = "cpu:0"];
+        "thread_waiting" -> "thread_scheduling" [label = "io:0"];
+        "thread_rescheduling" -> "thread_terminated" [label = "yieldcpu:0"];
+        "thread_rescheduling" -> "thread_waiting" [label = "yieldcpu:1"];
+        "thread_rescheduling" -> "thread_scheduling" [label = "yieldcpu:2"];
+    }
+}

@@ -1,0 +1,122 @@
+# ************************************************************
+# * Student Author: Ryan Livinghouse
+# * Major: Information Technology
+# * Creation Date: 3/10/2024
+# * Due Date: April 11, 2024 @ 11:59 PM
+# * Course: CSC343
+# * Professor Name: Dr. Parson
+# * Assignment: #3
+# * Filename: srtf.stm
+# * STUDENT: Fill in the blanks and update comments below, changing
+# * from RR to FCFS, SJF, SJFEST, and SRTF in those STM files as
+# * instructed by the assignment handout.
+# *
+# * SHORTEST REMAINING TIME FIRST:
+# * This file implements the Shortest Remaining Time First (SRTF)
+# * scheduling algorithm, enhanced with CPU burst time estimation. SRTF is a preemptive
+# * scheduling algorithm that selects the thread with the shortest estimated remaining
+# * execution time. It incorporates burst time estimation to dynamically adjust to the
+# * threads' execution patterns, aiming to minimize the average turnaround time and
+# * improve responsiveness.
+# *
+# * USE:
+# * make testsrtf
+# ************************************************************
+
+machine processor {
+    # Initial setup with a queue that supports priority based on estimated burst time.
+    processesToGo = 10, pid = -1, tid = -1 ;
+    start init, state makingThreads, accept doneStartingThreads ;
+    init -> makingThreads init()[]/@processesToGo -= 1 ;
+        # changed to True
+        processor.readyQ = Queue(True) ; fork()@
+    makingThreads -> makingThreads fork(pid, tid)[@processesToGo > 0@]/@
+        processesToGo -= 1 ; fork()@
+    makingThreads -> doneStartingThreads fork(pid, tid)[@processesToGo == 0@]/
+}
+
+machine thread {
+    # Including quantum and alpha again for burst time estimation.
+    quantum = 125, machineid = -1, pid = -1, tid = -1, iobound = @False@,
+        endtime = 100000, iodevice = 0, alpha = 0.5 ;
+    # The transition out of state init initializes the above variables.
+    start init, state scheduling, state ready, state running, state waiting,
+        state rescheduling, accept terminated ;
+
+    # Initialization with predictive and preemptive scheduling in mind.
+    init -> scheduling init()[]/@machineid, pid, tid = getid();
+        iobound = True if ((pid % 2) == 1) else False ;
+        # ^^^ The odd pids are IO bound.
+        # The others (50%) are CPU bound. This job mix stresses the scheduling
+        # algorithms better than a strictly IO-bound or CPU-bound mix.
+        # Set cpuTicksB4IO when going into scheduling.
+        cpuTicksB4IO = sample(1, 250, 'exponential', 25) if iobound
+            else sample(100, 1100, 'revexponential', 1000);
+        tickstorun = min(cpuTicksB4IO, quantum);
+        tickstodefer = cpuTicksB4IO - tickstorun;
+        yieldcpu()@
+
+    # Preemptive scheduling and running transitions reflecting SRTF logic.
+    scheduling -> running yieldcpu()[@processor.contextsFree > 0@]/@
+        processor.contextsFree -= 1 ;
+        cpu(tickstorun)@
+
+    # scheduling -> ready places a ready-to-run thread into processor.readyQ,
+    # which is a FIFO queue for round robin,, and then waits for
+    # event contextAvailable from another thread releasing a context.
+    scheduling -> ready yieldcpu()[@processor.contextsFree == 0@]/@
+        # Put myself in processor's readyQ. rr uses a fifo queue.
+        processor.readyQ.enq(thread, quantum);
+        waitForEvent('contextAvailable', False)@
+
+    # After receiving a contextAvailable event from a thread releasing a
+    # context, ready -> scheduling sends its thread back to try for a
+    # context again.
+    ready -> scheduling contextAvailable()[]/@yieldcpu()@
+    # ^^^ Do not set cpuTicksB4IO; they have not all been used.
+
+    # When a threads current context time is completed, it releases
+    # its context,  wakes up a thread at the front of the processor.readyQ
+    # if there is one with a contextAvailable event, and goes to
+    # the rescheduling state.
+    running -> rescheduling cpu()[]/@
+        processor.contextsFree += 1 ;
+        signalEvent(processor.readyQ.deq(), 'contextAvailable', 0)
+            if len(processor.readyQ) > 0 else 0;
+        yieldcpu()@
+
+    # When simulation time is expired, terminate.
+    rescheduling -> terminated yieldcpu()[@time() >= endtime@]/
+
+    # When simulation time is not expired and there are no remaining
+    # CPU ticks from preemption in tickstodefer, start a blocking IO request.
+    # See STUDENT instructions.
+    rescheduling -> waiting yieldcpu()[@time() < endtime
+            and tickstodefer < 1@]/@
+        # Pick iodevice of -1 (process terminal) or one of the fastio devices.
+        iodevice = sample(-1, len(processor.fastio)-1, 'uniform');
+        io(iodevice)@
+
+    # When simulation time is not expired and there are some remaining
+    # CPU ticks from preemption in tickstodefer, go back to state scheduling
+    # to resume execution of the CPU burst.
+    # See STUDENT instructions.
+    rescheduling -> scheduling yieldcpu()[@time() < endtime
+            and tickstodefer > 0@]/@
+        tickstorun = min(tickstodefer, quantum);
+        tickstodefer = tickstodefer - tickstorun;
+        yieldcpu()@
+
+    # When blocking IO completes, go back to state scheduling for the next
+    # CPU burst after computing a new cpuTicksB4IO, tickstorun, tickstodefer
+    # and possibly other variables per handout instructions (STUDENT).
+    waiting -> scheduling io()[]/@
+        quantum = round((alpha * cpuTicksB4IO) + ((1.0 - alpha) * quantum));
+        cpuTicksB4IO = sample(1, 250, 'exponential', 25) if iobound
+            else sample(100, 1100, 'revexponential', 1000);
+        tickstorun = min(cpuTicksB4IO, quantum);
+        tickstodefer = cpuTicksB4IO - tickstorun;
+        yieldcpu()@
+}
+
+processor
