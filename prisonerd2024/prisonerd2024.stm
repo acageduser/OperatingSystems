@@ -1,0 +1,222 @@
+# CSC 343, Spring 2024. D. Parson, assignment 1.
+# STUDENT 1 (10%): Add YOUR NAME and comments summarizing the below.
+# ************************************************************
+# * Author: Dr. Parson
+# * Co-Author: Ryan Livinghouse
+# * Preferred pronouns: He/Him
+# * Major: IT
+# * Creation Date:              February 22, 2024 by 11:59 PM
+# * Due Date: 11:59 PM Thursday February 22
+# * Course: CSC343
+# * Professor Name: Dale Parson
+# * Assignment: Assignment 1
+# * Filename: prisonerd2024.stm
+# * Simulate a game of multiple-player prisoner's dilemma to learn the
+# * state machine modeling architecture (STM). 
+# ************************************************************
+
+machine processor {
+    # STUDENT: Do not change the processor state machine.
+    # Use this machine in all of your files in assignment 1 to start thread
+    # state machines, in which each one of 10 is a 2-threaded process.
+    # Each field in object processor is visible to all thread state machines.
+    # Below is a table action[pid][tid] that is indexed on each thread's
+    # [processID][threadID] according to the actions defined below:
+    #   "defect" always sends the "defect" message to its partner thread.
+    #   "cooperate" always sends the "cooperate" message to its partner thread.
+    #   "halfsy" uses sample(0,1,'uniform') each time to decide whether
+    #       to send "defect" for a sample of 0, "cooperate" for a 1.
+    #   "reciprocate" sends "cooperate" on its initial message, and then
+    #       echoes its partner's most recent previous message of
+    #       "defect" or "cooperate" on its next message.
+    # Use the @@ delimiters around non-numeric Python data types.
+    # Using @@ passes the source code directly to Python.
+    # Use matching "double quotes" to delimit strings.
+    # Use "and" or "or" instead of "&&" or "||" in boolean guard expressions.
+    processesToGo = 10, tid = -1, pid = -1;
+    start init, state makingProcesses, accept processorDone ;
+    init -> makingProcesses init()[]/@
+        # See above, processor.action indexed on [pid][tid], i.e.,
+        # processor.action[pid][tid] gives a thread object's strategy.
+        # Comments for processor.penalty are after its code.
+        processor.action = [
+            ["defect", "defect"],
+            ["defect", "cooperate"],
+            ["defect", "halfsy"],
+            ["defect", "reciprocate"],
+            ["halfsy", "cooperate"],
+            ["reciprocate", "cooperate"],
+            ["cooperate", "cooperate"],
+            ["halfsy", "halfsy"],
+            ["halfsy", "reciprocate"],
+            ["reciprocate", "reciprocate"]
+        ];
+        processor.penalty = {
+            "defect" : {
+                "defect" : 2,
+                "cooperate" : 0
+            },
+            "cooperate" : {
+                "defect" : 3,
+                "cooperate" : 1
+            }
+        };
+        # penalty is a 2D associative array (indexed using strings),
+        # in which the the first index gives my current action,
+        # the second index gives my partner's, and the result of
+        # indexing gives my penalty in this round. For example,
+        # processor.penalty["cooperate"]["defect"] has a value of 3.
+        # See https://en.wikipedia.org/wiki/Prisoner%27s_dilemma
+        #
+        # processorSampling is used when a halfsy thread calls sample(),
+        # mapping 0 to defect and 1 to cooperate.
+        processor.processorSampling = ["defect", "cooperate"];
+        # Start process 0, thread 0, then continue:
+        processesToGo -= 1 ; fork()@
+    makingProcesses -> makingProcesses fork(pid, tid) [@processesToGo > 0@] /@
+        processesToGo -= 1 ; fork()@
+    makingProcesses -> processorDone fork(pid, tid) [@processesToGo == 0@] /
+}
+
+# STUDENT work goes into machine thread according to the handout.
+# Add documentation comments for the code that you write!!!
+machine thread {
+    # You WILL need to create additional variables.
+    # For example, strategy "reciprocate" needs to keep track of
+    # its partner's most recent action. Each thread STM must keep track
+    # of its partner's most recent action, as just noted, and its own
+    # most recent action, when computing a penalty for a move in the game.
+    # When the iterations to the transition to go into the terminated state
+    # increment loopCount to >= loopLimit, go to terminated.
+    # STUDENT 2 (10%) Initialize the following variables used below.
+    # Initialize myLastAction to the string "cooperate" in those quotes.
+    # Initialize otherAction to the string "cooperate" in those quotes.
+    # Initialize otherLastAction to the string "cooperate" in those quotes.
+    
+    othertid = -1, loopCount = 0, loopLimit = 100,
+        myLastAction = "cooperate", otherAction = "cooperate", otherLastAction = "cooperate", 
+        SendRecvAction = "SendRecvActionBUG",
+        penalty = 0 ;
+    # STUDENT 3 (10%): Add any states appearing in the handout's state
+    # diagram missing from these state declarations.
+    start init, state initThread, state sendMyAction, 
+        state awaitOtherAction, state timeInJail,
+        accept terminated;
+    # Macro SendRecvSync sends message in SendRecvAction to its partner,
+    # where variable SendRecvAction holds one of "defect" or "cooperate".
+    # A transition must assign to SendRecvAction before invoking SendRecvSync.
+    # After sending, a thread waits to receive its own receiveOtherAction
+    # from its partner unless the partner has already deposited the mesaage
+    # into pcb.incomingMessage[tid].
+    # Invoke SendRecvSync by saying SendRecvSync without a trailing semicolon.
+    # You do not need a semicolon on any final action.
+    macro SendRecvSync @
+        pcb.incomingMessage[othertid] = SendRecvAction ;
+        signalEvent(pcb.partners[othertid], "receiveOtherAction",
+            SendRecvAction);
+        waitForEvent('receiveOtherAction', False)
+                if not pcb.incomingMessage[tid]
+            else trigger(0, 'receiveOtherAction', pcb.incomingMessage[tid])
+        @
+    init -> initThread init()[]/@
+        machineID, pid, tid = getid();
+        msg("Example DEBUG message, pid = " + str(pid) + " tid = " + str(tid));
+        # mystrategy is one of the 4 string values in processor.action.
+        # State machine variables persist across all transitions once set.
+        mystrategy = processor.action[pid][tid];
+        cpu(0)@
+    initThread -> sendMyAction cpu() [@tid == 0@] /@
+        # Next two threads are indexed on tids 0 and 1.
+        # pcb.partners holds a pointer to the thread objects.
+        # pcb.incomingMessage holds message from its partner or "" or None.
+        # pcb is the Process Control Block (PCB) object. A PCB holds data
+        # shared by all threads in a process. It emulates a process' memory.
+        # None is Python's NULL pointer.
+        pcb.partners = [thread, None];
+        pcb.incomingMessage = ["", ""];
+        othertid = 1;
+        spawn();
+        # Give tid 1 time to populate pcb.partners[1]
+        cpu(10)@
+    initThread -> sendMyAction cpu() [@tid == 1@] /@
+        pcb.partners[1] = thread;
+        othertid = 0;
+        cpu(0);@
+
+    # TRANSITIONS FROM sendMyAction TO state awaitOtherAction,
+    # timeInJail, terminated, and back to sendMyAction as indicated
+    # by the handout.
+    # The final two actions in any transition to awaitOtherAction MUST BE
+    # assignment of "defect" or "cooperate" into variable SendRecvAction,
+    # and then SendRecvSync.
+    # The initial action from state awaitOtherAction to timeInJail MUST BE 
+    # pcb.incomingMessage[tid] = None; in order to clear that message buffer.
+
+    # Here is one of three transitions that I am supplying for the first
+    # time in 2024:
+
+    # Use a toss of a coin, 0 or 1, as index into processor.processorSampling.
+    sendMyAction -> awaitOtherAction cpu()[@mystrategy == "halfsy"@]/@
+        myLastAction = processor.processorSampling[sample(0,1,"uniform")];
+        # msg("DEBUG SEND B " + str(myLastAction));
+        SendRecvAction = myLastAction ;
+        SendRecvSync;@
+
+    # When the mystrategy gives the move, just copy it.
+    # STUDENT 4 (25%)
+    # Make another transition sendMyAction -> awaitOtherAction cpu()
+    # 1. The guard condition is:
+    #   mystrategy equals "defect" or mystrategy equals "cooperate".
+    # 2. The actions are:
+    #   Assign mystrategy into variable myLastAction.
+    #   Assign mystrategy into variable SendRecvAction.
+    #   Invoke SendRecvSync; like the previous example above.
+	sendMyAction -> awaitOtherAction cpu()[@mystrategy == "defect" or mystrategy == "cooperate"@]/@
+		myLastAction = mystrategy;
+		SendRecvAction = mystrategy;
+		SendRecvSync;@
+    # Use opponent's otherLastAction back, where otherLastAction was
+    # initialized for "cooperate" for the first move.
+    # STUDENT 5 (25%)
+    # Make a third transition sendMyAction -> awaitOtherAction cpu()
+    # 1. The guard condition is:
+    #   mystrategy equals "reciprocate".
+    # 2. The actions are:
+    #   Assign otherLastAction into variable myLastAction.
+    #   Assign otherLastAction into variable SendRecvAction.
+    #   Invoke SendRecvSync; like the previous example above.
+	sendMyAction -> awaitOtherAction cpu()[@mystrategy == "reciprocate"@]/@
+		myLastAction = otherLastAction;
+		SendRecvAction = otherLastAction;
+		SendRecvSync;@
+    # Capture otherAction from the incoming event, clear my
+    # incoming pcb.incomingMessage before the next round of play,
+    # compute the penalty per game rules, bump the loopCount,
+    # schedule the penalty time in jail. This is supplied by Dr. Parson.
+    
+    awaitOtherAction -> timeInJail receiveOtherAction(otherAction)[]/@
+        pcb.incomingMessage[tid] = None;
+        penalty = processor.penalty[myLastAction][otherAction];
+        otherLastAction = otherAction ;
+        loopCount += 1;
+        cpu(penalty);@
+
+    # If not at loopLimit, play another round.
+    # STUDENT 6 (10%):
+    # Make a transition timeInJail -> sendMyAction.
+    # 1. The guard condition is:
+    #   loopCount is less than loopLimit.
+    # 2. The actions is: cpu(0)
+    timeInJail -> sendMyAction cpu()[@loopCount < loopLimit@]/@
+        cpu(0);@
+
+    # If at loopLimit, quit playing
+    # STUDENT 7 (10%):
+    # Make a transition timeInJail -> terminated.
+    # 1. The guard condition is:
+    #   loopCount is greater than or equal to loopLimit.
+    # 2. The actions is: There is no action entering this accept state
+    timeInJail -> terminated cpu()[@loopCount >= loopLimit@]/
+}
+
+processor
