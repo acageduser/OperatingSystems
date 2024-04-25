@@ -1,0 +1,250 @@
+# ************************************************************
+# * Author:     D. Parson
+# * Student coauthor: Ryan Livinghouse
+# * Major:      CS&IT professor
+# * Creation Date: 4/9/2024
+# * Due Date: Thursday 5/2/2024
+# * Course:     CSC343 Spring 2024
+# * Professor Name: D. Parson
+# * Assignment: #4
+# * Filename: PageReplaceOptimal.stm
+# * Describe the context-scheduling algorithm of this STM:
+# * Use a predictive Reference String per Chapter 9 slide 30 for all
+# * page replacement algorithms. This assignment is a high level,
+# * simplified set of simulation models.
+# *
+# * FIFO selects the oldest page in memory for replacement, based on the order
+# * of arrival. This is a simple and historical method where the first page
+# * loaded into memory is the first to be replaced, regardless of its usage 
+# * frequency or recency.
+
+# STUDENT A 1% Put your name AND the correct file name & description of
+# algorithm for each STM in this assignment: PageReplaceFIFO,
+# PageReplaceLRU, and PageReplaceLRUDirty is their STM files.
+# Each counts 1 point. PageReplaceOptimal is already correct above.
+# Add your name.
+# ************************************************************
+
+machine processor {
+    # Assignment 4 is similated using 1 single-threaded process.
+    tid = -1, pid = -1 ;
+    start init, accept processorDone ;
+    init -> processorDone init()[]/@
+        fork()@
+}
+
+# All simulation takes place in this one thread, so no need for
+# processor.prefixed or pcb.prefixed state variables.
+machine thread {
+    machineid = -1, pid = -1, tid = -1,
+        # referenceQueues[0] will be FIFO for FIFO page replacement,
+        # in which you ENQUEUE at the back and DEQUEUE from the front.
+        # Always uses referenceQueues[0] for for FIFO.
+
+        # For regular LRU replacement it will be a FIFO in which you
+        # ENQUEUE at the back and DEQUEUE from the front,
+        # BUT you will REMOVE a page from referenceQueues IF IT IS
+        # PRESENT, then ENQUEUE it so it re-enters at the back of the queue,
+        # meaning it is most recently used.
+        # Always uses referenceQueues[0] for for plain LRU.
+
+        # For LRUDirty replacement it will be a FIFO in which you
+        # ENQUEUE at the back and DEQUEUE from the front,
+        # BUT you will REMOVE a page from referenceQueues IF IT IS
+        # PRESENT, then ENQUEUE it so it re-enters at the back of the queue,
+        # meaning it is most recently used.
+        # Always uses referenceQueues[isModified] for LRUDirty.
+        # STUDENT IMPORTANT NOTE: When enqueuing in LRUDirty you can just
+        # use variable isModified to select the correct queue --
+        # referenceQueues[0] holds unmodified pages and referenceQueues[1]
+        # holds modified pages. HOWEVER, LRUDirty needs to dequeue from
+        # referenceQueues[0] when it is non-empty, else referenceQueues[1].
+        # For that use this conditional expression:
+        # victimPage = (referenceQueues[0].pop(0))
+        #   if (len(referenceQueues[0]) > 0) else (referenceQueues[1].pop(0))
+
+        # Optimal replacement does not use referenceQueues. It uses
+        # referencePageList to "look into the future". referenceQueues
+        # "looks into the past".
+        referenceQueues = @[[], []]@,
+
+        # EXAMPLES OF PYTHON LIST OPERATIONS FOR QUEUE USAGE:
+        # >>> queue = [] 
+        # for i in range(0,10):
+        #     queue.append(i)
+        #     This ^^^^^ is how to ENQUEUE a value via append().
+        # queue is [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # queue.pop(0)        # This is how to DEQUEUE a value.
+        #   0
+        # queue.pop(0)        # This is how to DEQUEUE a value.
+        #   1
+        # queue is [2, 3, 4, 5, 6, 7, 8, 9]
+        # queue.pop()
+        # This ^^^^^ is how to POP a value from the back, using it as a stack.
+        #   9
+        # queue is [2, 3, 4, 5, 6, 7, 8]
+        # HERE IS HOW TO CONDITIONALLY REMOVE A VALUE FOR REINSERTION IN LRU:
+        # while 5 in queue: queue.remove(5)    # REMOVE
+        # queue is [2, 3, 4, 6, 7, 8]
+        # queue.append(5)   # ENQUEUE
+        # queue is [2, 3, 4, 6, 7, 8, 5]
+        # Here is what happens if you skip the WHILE for remove():
+        # queue.remove(55)
+        #   Traceback (most recent call last):
+        #       File "<stdin>", line 1, in <module>
+        #   ValueError: list.remove(x): x not in list
+        # while 55 in queue: queue.remove(55)
+        # queue is [2, 3, 4, 6, 7, 8, 5]
+        #
+
+        referencePageCount = 100000, 
+        # ^^^^^ How many times to reference a page before quitting simulation.
+        pageCount = 500, frameCount = 100, currentPage = 0, victimPage = 0,
+        # ^ Logical pages, physical frames, page being referenced, victimized.
+        future = @[]@, respage = -1, isModified = 0, wasModified = 0,
+        # ^ future is used for Optimal
+        # respage is a  temp variable for resident page if you need it
+        referencePageList = @[]@,
+        # ^ referencePageList is the Reference String per Chapter 9 slide 30
+        # Gaussian sample below should give fairly good locality of reference.
+        allPageSet = @None@, residentPageMap = @None@;
+    start init, state readyToCompute, state compute, state findVictim,
+        accept terminated ;
+    init -> readyToCompute init()[]/@machineid, pid, tid = getid();
+        # About 65% of gaussian below are in the first standard deviation
+        # of + or - 1/10th of the 500 pages, i.e., 1/5th = 20%.
+        for i in range(0,referencePageCount):
+            referencePageList.append(sample(0,pageCount-1, 'gaussian',
+                pageCount//2, pageCount//10));
+        # print("DEBUG PAGEREF",referencePageList);
+        # ^^^ Used to plot histogram.
+        allPageSet = set(referencePageList);
+        residentPageMap = {};
+        # ^^^ residentPageMap maps resident page to the isModified bit,
+        # and its keys serve as residentPageSet.
+        currentPage = referencePageList.pop(0);
+        # One in 10 pages starts life as modified, but if it stays 
+        # resident in memory before paging out, 10 accesses on average
+        # with make it a modified page.
+        isModified = 1 if ((sample(0,1024,'uniform') % 10) == 0) else 0;
+        # ^^^ isModified when 1 means the page is "Dirty" and needs to be
+        # written when paged out. 10% of of resident pages have been modified.
+        # STUDENT B 5% per file:
+        # Enqueue (using .append()) currentPage in the correct
+        # referenceQueues for FIFO, LRU, or LRUDirty per instructions at
+        # the start of this "machine thread". Note that LRU & LRUDirty require
+        # conditional removal of currentPage *BEFORE* enqueuing, and LRUDirty
+        # requires enqueuing into the appropriate referenceQueues[???].
+        # Also, for LRUDirty, conditionally remove currentPage from
+        # both queues, one at a time. Use a "while" loop for conditional
+        # removal() per the queue.remove(???) instructions at the top of
+        # this thread STM.
+        referenceQueues[0].append(currentPage);
+        cpu(0)@
+
+    # No paging time required when currentPage is resident in a frame.
+    # It may be resident but clean; mark it dirty if isModified.
+    readyToCompute -> compute cpu()[@currentPage in residentPageMap@]/@
+        residentPageMap[currentPage] = residentPageMap[currentPage]
+            | isModified;
+        cpu(0)@
+
+    # No paging time required when currentPage is not resident in a frame,
+    # but a free frame is available.
+    readyToCompute -> compute cpu()[@(not (currentPage in residentPageMap))
+            and (len(residentPageMap) < frameCount)@]/@
+        residentPageMap[currentPage] = isModified ;
+        cpu(0)@
+
+    # Page is not resident and there is no free frame, use specific
+    # page replacement algorithm (Optimal is done, FIFO, LRU, LRUDirty)
+    # to locate the victim page.
+    readyToCompute -> findVictim cpu()[@not ((currentPage in residentPageMap)
+            or (len(residentPageMap) < frameCount))@]/@
+        # For the currently resident pages, one of which must be victimized,
+
+        # START OF OPTIMAL PAGE REPLACEMENT TO SET VARIABLE victimPage.
+        # Optimal page replacement finds the one furthest in the
+        # referencePageList -- the page to be referenced furthest in the
+        # future -- and selects that as the victim. However, if there is a
+        # page in residentPageMap that will never be referenced again,
+        # it becomes the victim; the multiplication of 
+        # (respage * referencePageCount * 10) guarantees that this no-future
+        # respage sorts ahead by max().
+        # END OF OPTIMAL PAGE REPLACEMENT TO SET VARIABLE victimPage.
+
+        # START OF FIFO PAGE REPLACEMENT TO SET VARIABLE victimPage.
+        # STUDENT C 15%: For PageReplaceFIFO.stm, after copying
+        # PageReplaceOptimal.stm to PageReplaceFIFO.stm and updating
+        # header comments at the top of the file:
+        # 1. Remove the above lines of code from "START OF OPTIMAL" through
+        #    "END OF OPTIMAL". We are not using Optimal page replacement.
+        # 2. Dequeue victimPage from the front of referenceQueues[0].
+        #    See comments at start of this machine thread for queue operations.
+        victimPage = referenceQueues[0].pop(0);
+
+        # END OF FIFO PAGE REPLACEMENT TO SET VARIABLE victimPage.
+
+        # START OF LRU PAGE REPLACEMENT TO SET VARIABLE victimPage.
+        # STUDENT D 10%: For PageReplaceLRU.stm, after copying your working
+        # PageReplaceFIFO.stm (make testFIFO has passed) to
+        # PageReplaceLRU.stm and updating header comments at the
+        # top of the file:
+        # 1. Replace the "START OF FIFO" comment line above with this
+        #    "START OF LRU" line and do the same for "END OF FIFO".
+        # 2. Dequeue victimPage from the front of referenceQueues[0].
+        #    This is the same as step 2 for FIFO above.
+        # END OF LRU PAGE REPLACEMENT TO SET VARIABLE victimPage.
+
+
+        # START OF LRUDirty PAGE REPLACEMENT TO SET VARIABLE victimPage.
+        # STUDENT E 15%: For PageReplaceLRUDirty.stm, after copying your
+        # working PageReplaceLRU.stm (make testLRU has passed) to
+        # PageReplaceLRUDirty.stm and updating header comments at the
+        # top of the file:
+        # 1. Replace the "START OF LRU" comment line above with this
+        #    "START OF LRUDirty" line and do the same for "END OF LRU".
+        # 2. Dequeue victimPage from the front of referenceQueues[0] if
+        #    its length is > 0, else from referenceQueues[1]. LRUDirty
+        #    prefers to select victimPage from the set of pages that
+        #    have not been modified since paging in, to avoid paging-out
+        #    overhead. See instructions for "For LRUDirty replacement"
+        #    near the top of this thread state machine.
+        # 3. After "make testLRUDirty" passes, complete README.txt.
+        # END OF LRUDirty PAGE REPLACEMENT TO SET VARIABLE victimPage.
+
+        # STUDENT DO NOT!!! MODIFY THE LINES BELOW IN THIS TRANSITION!!!
+        while victimPage in referenceQueues[0]:
+            referenceQueues[0].remove(victimPage);
+        while victimPage in referenceQueues[1]:
+            referenceQueues[1].remove(victimPage);
+        wasModified = residentPageMap[victimPage];
+        residentPageMap.pop(victimPage);
+        residentPageMap[currentPage] = isModified ;
+        cpu(2 if (wasModified) else 1)@
+
+    findVictim -> compute cpu()[]/@
+        cpu(0)@
+
+    compute -> terminated cpu()[@len(referencePageList) == 0@]/
+
+    compute -> readyToCompute cpu()[@len(referencePageList) > 0@]/@
+        currentPage = referencePageList.pop(0);
+        # One in 10 pages starts life as modified, but if it stays 
+        # resident in memory before paging out, 10 accesses on average
+        # with make it a modified page.
+        isModified = 1 if ((sample(0,1024,'uniform') % 10) == 0) else 0;
+        # STUDENT F 5% per file: Enqueue currentPage in the correct
+        # referenceQueues for FIFO, LRU, or LRUDirty per instructions at
+        # the start of this "machine thread". Note the LRU & LRUDirty require
+        # conditional removal of currentPage *BEFORE* enqueuing, and LRUDirty
+        # requires enqueuing into the appropriate referenceQueues[???].
+        # Also, for LRUDirty, conditionally remove currentPage from
+        # both queues, one at a time. Use a "while" loop for conditional
+        # removal() per the queue.remove(???) instructions at the top of
+        # this thread STM.
+        referenceQueues[0].append(currentPage);
+        cpu(0)@
+}
+
+processor

@@ -1,0 +1,21 @@
+digraph "PageReplaceLRU.dot" {
+    subgraph "processor" {
+        "processor_init" [shape=triangle, label="processor:init:0"];
+        "processor_processorDone" [shape=octagon, label="processor:processorDone:1"];
+        "processor_init" -> "processor_processorDone" [label = "init:0"];
+    }
+    subgraph "thread" {
+        "thread_init" [shape=triangle, label="thread:init:2"];
+        "thread_readyToCompute" [shape=ellipse, label="thread:readyToCompute:3"];
+        "thread_compute" [shape=ellipse, label="thread:compute:4"];
+        "thread_findVictim" [shape=ellipse, label="thread:findVictim:5"];
+        "thread_terminated" [shape=octagon, label="thread:terminated:6"];
+        "thread_init" -> "thread_readyToCompute" [label = "init:0"];
+        "thread_readyToCompute" -> "thread_compute" [label = "cpu:0"];
+        "thread_readyToCompute" -> "thread_compute" [label = "cpu:1"];
+        "thread_readyToCompute" -> "thread_findVictim" [label = "cpu:2"];
+        "thread_compute" -> "thread_terminated" [label = "cpu:0"];
+        "thread_compute" -> "thread_readyToCompute" [label = "cpu:1"];
+        "thread_findVictim" -> "thread_compute" [label = "cpu:0"];
+    }
+}
