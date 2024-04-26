@@ -2,7 +2,7 @@
 CSC 343 Operating Systems Coursework
 
 ### prisonerd2024:
-The first project introduced me to state machines through the Iterated Prisoner's Dilemma simulation. I developed a program that dynamically adjusted its strategy based on the game's outcomes, delving deep into state transitions and variable initializations. This exercise offered a visual for the decision-making processes within a simulated environment.
+The first project introduced me to state machines through the Iterated Prisoner's Dilemma simulation. I developed a program that dynamically adjusted its strategy based on the game's outcomes, state transitions, and variable initializations. This exercise offered a visual for the decision-making processes within a simulated environment.
 
 ### schedualUserKernel2024:
 In the second assignment, I included user-to-kernel mode scheduling, where I implemented many-to-one and many-to-many scheduling algorithms. This task required an understanding of how multiple user threads interact with kernel processes, pushing me to consider efficiency and resource management in a multi-threaded context.
