@@ -7,7 +7,7 @@
 # * Course:     CSC343 Spring 2024
 # * Professor Name: D. Parson
 # * Assignment: #4
-# * Filename: PageReplaceOptimal.stm
+# * Filename: PageReplaceLRUDirty.stm
 # * Describe the context-scheduling algorithm of this STM:
 # * Use a predictive Reference String per Chapter 9 slide 30 for all
 # * page replacement algorithms. This assignment is a high level,
@@ -17,7 +17,7 @@
 # * replacement algorithm. This variant of LRU considers the least
 # * recently used pages for replacement and prioritizes replacing 'clean' pages
 # * over 'dirty' pages. This reduces the overheead of writing modified pages to disk,
-# * which can enhance system performance in environments with high disk latency.
+# * which can speed up system performance in environments with high disk latency.
 
 # STUDENT A 1% Put your name AND the correct file name & description of
 # algorithm for each STM in this assignment: PageReplaceFIFO,

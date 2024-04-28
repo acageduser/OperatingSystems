@@ -7,7 +7,7 @@
 # * Course:     CSC343 Spring 2024
 # * Professor Name: D. Parson
 # * Assignment: #4
-# * Filename: PageReplaceOptimal.stm
+# * Filename: PageReplaceFIFO.stm
 # * Describe the context-scheduling algorithm of this STM:
 # * Use a predictive Reference String per Chapter 9 slide 30 for all
 # * page replacement algorithms. This assignment is a high level,
