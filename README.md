@@ -17,5 +17,5 @@ The fourth project compared relative times spent on page replacement across mult
 
 - RESULT: LRU was the most effective, balancing the simple common pattern of memory access that 'pages that have not been used recently are more likely to be unused in the near future.'
 
-### FINAL5
+### FINAL5:
 The final project is an expanded comprehensive list of questions built upon assignment 4. There is no code.
