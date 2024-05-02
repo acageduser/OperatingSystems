@@ -1,0 +1,620 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!-- saved from url=(0073)https://faculty.kutztown.edu/parson/spring2024/CSC343Spring2024Assn5.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    
+    <title>CSC 343 Operating Systems, Spring 2024, Assignment 5.</title>
+    
+    
+    
+    
+  </head>
+  <body data-new-gr-c-s-check-loaded="14.1171.0" data-gr-ext-installed="">
+    <font size="+2"> <b>Assignment 5</b> is an extension of Assignment
+      4 page replacement to investigate the effects of<br>
+      &nbsp;&nbsp;&nbsp; <u>page replacement algorithms</u> (Optimal,
+      FIFO, &amp; LRU), <u>locality of reference</u>, and <u>frame
+        count</u>.<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <u><b>due via D2L
+          Assignment 5</b></u><b> </b>due by <b>11:59 PM on Thursday
+        May 9</b>.<br>
+      &nbsp;&nbsp;&nbsp; I have written all the code. <b>You must
+        answer questions in this linked <a moz-do-not-send="true" href="https://faculty.kutztown.edu/parson/spring2024/README.Final5.txt">README.Final5.txt</a> and</b><b><br>
+      </b><b> &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; turn it into D2L by
+        the deadline</b>. I cannot accept assignments more than 1 day
+      late due to<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; my deadlines on turning in
+      grades. The usual 10% per day late penalty applies.<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; You must turn in </font><font size="+2"><font size="+2"><b><a moz-do-not-send="true" href="https://faculty.kutztown.edu/parson/spring2024/README.Final5.txt">README.Final5.txt</a> </b></font>and
+      nothing else. Turning in a Word doc or other<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; format will lose 10
+      points. I need to grade these in a batch session using vim, which<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; I can do only with
+      regular text files. No Word docs, PDFS, HTMLs, or other.<br>
+      <br>
+      <b>FINAL EXAM TIME SLOTS -- We will go over my solution to
+        Assignment 4.<br>
+        &nbsp;&nbsp;&nbsp; Noon class: &nbsp;&nbsp;&nbsp; Tuesday, May
+        7, 2024 8-10 a.m.<br>
+        &nbsp;&nbsp;&nbsp; 1:30 class: &nbsp;&nbsp;&nbsp; &nbsp;
+        Thursday, May 9, 2023 2-4 p.m.<br>
+        <u><br>
+        </u><u>STUDENTS: You do not have to become statistics experts or
+          worry about all</u><u><br>
+        </u><u>of the details in the graphs below to succeed with
+          Assignment 5.</u><u><br>
+        </u><u>Just let the <a moz-do-not-send="true" href="https://faculty.kutztown.edu/parson/spring2024/README.Final5.txt">README.Final5.txt</a> questions
+          focus your efforts.</u><br>
+      </b><br>
+      <b>WHAT HAS CHANGED SINCE ASSIGNMENT 4?<br>
+        <br>
+      </b>Two things have changed since Assignment 4:<br>
+      <br>
+      <b>1. The physical frameCount is 100 in Assignment 4 with 500
+        pageCount virtual pages.</b><b><br>
+      </b><b>&nbsp;&nbsp;&nbsp; Assignment 5 has both 100 (same as
+        Assignment 4) and 200 frameCount values.</b><br>
+      <br>
+      <b>2. Assignment 4</b> configures the 100,000-values page
+      reference string using this code:<br>
+      <br>
+      &nbsp;&nbsp;&nbsp; <b>init -&gt; readyToCompute</b>
+      init()[]/@machineid, pid, tid = getid();<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for i in
+      range(0,referencePageCount):<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      referencePageList.append(<b>sample(0,pageCount-1, 'gaussian',</b><b><br>
+      </b><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+        pageCount//2, pageCount//10)</b>);<br>
+      <br>
+      <b>&nbsp;&nbsp;&nbsp; Assignment 5</b> has several different
+      configurations of the reference string and frameCount:<br>
+      <br>
+      &nbsp;&nbsp;&nbsp; <b>init -&gt; readyToCompute</b>
+      init()[]/@machineid, pid, tid = getid();<br>
+      <b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; frameCount =
+        frameCount * len(processor.fastio);</b><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # ^^^ This is 100 or
+      200 frames.<br>
+      <b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; locality =
+        'gaussian' if (processor.contextCount == 1) else</b><b><br>
+      </b><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+        ('exponential' if (processor.contextCount == 2) else</b><b><br>
+      </b><b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+        ('revexponential' if (processor.contextCount == 3) else
+        'uniform'));</b><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; msg("TRACE Optimal
+      pageCount=" + str(pageCount) + ", frameCount="<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      + str(frameCount) + ", locality=" + locality);<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; print("TRACE Optimal
+      pageCount=" + str(pageCount) + ", frameCount="<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      + str(frameCount) + ", locality=" + locality);<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # For the normal
+      distribution, the values less than one standard<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # deviation away from
+      the mean account for 68.27% of the set;<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # while two standard
+      deviations from the mean account for 95.45%;<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # and three standard
+      deviations account for 99.73%<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # <a moz-do-not-send="true" href="https://en.wikipedia.org/wiki/Normal_distribution">https://en.wikipedia.org/wiki/Normal_distribution</a><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for i in
+      range(0,referencePageCount):<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      referencePageList.append(<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+      <b><font color="#006600">sample(0,pageCount-1, 'gaussian',<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+          pageCount//2, pageCount//20) if (locality == 'gaussian'</font></b>)
+      else<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+      (<b><font color="#3333ff">sample(0,pageCount-1,'uniform') if
+          (locality == 'uniform'</font></b>) else<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+      (<b><font color="#993399">sample(0,pageCount-1,'exponential',pageCount//10)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+          if (locality == 'exponential'</font></b>) else<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+
+
+
+      <b><font color="#990000">sample(0,pageCount-1,'revexponential',(pageCount//10)*9)</font></b>)));<br>
+      <br>
+      Here is the complete code for Assignment 5's <a moz-do-not-send="true" href="https://faculty.kutztown.edu/parson/spring2024/PageReplaceOptimal.stm.txt">PageReplaceOptimal.stm</a>.
+      Assignment 5's<br>
+      FIFO and LRU models have this same change to <b>frameCount</b>
+      and <b>referencePageList</b>,<br>
+      configured by command-line arguments len(processor.fastio) and
+      processor.contextCount<br>
+      that are not otherwise used in Assignment 5 or at all in
+      Assignment 4.<br>
+      The states and transitions are identical to Assignment 4 for
+      Optimal, FIFO, &amp; LRU,<br>
+      which are identical to each other.<br>
+      <br>
+      <img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 5._files/PageReplaceOptimal.jpg" alt="PageReplaceOptimal.jpg" width="1025" height="541"><br>
+      <br>
+      <b>Figure 1: The state machine diagram for Optimal, FIFO, &amp;
+        LRU page replacement in Assignments 4 &amp; 5.</b><br>
+      <br>
+      As in Assignment 4, the two transitions from state <b>readyToCompute</b>
+      to <b>compute</b> are taken<br>
+      <b>a)</b> if the <b>currentPage is already mapped to a physical
+        frame</b> (the transition on the left labeled<br>
+      "cpu:0" above), <b>or b)</b> if a f<b>ree frame is available for
+        mapping to the page</b> without finding a<br>
+      "victim" page for replacement (labeled "cpu:1" above). The
+      transition from <b>readyToCompute</b><br>
+      to <b>findVictim</b> uses the page replacement algorithm
+      (Optimal, FIFO, or LRU) to select the<br>
+      victim page from which to take a physical frame, with this cost
+      going into state findVictim as<br>
+      in Assignment 4:<br>
+      <br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <b>cpu(2 if (wasModified)
+        else 1)</b><br>
+      <br>
+      The cost measured for the simulation is <b>SUM_findVictim</b>,&nbsp;
+
+
+
+      which is the sum of time spent in the<br>
+      <b>findVictim</b> state for the single-threaded single process of
+      this state machine. This cost is a<br>
+      minimum of 1 tick for entry into <b>findVictim</b>, 2 ticks if
+      the victim has been modified while mapped<br>
+      to a frame. There are 100,000 simulated page accesses (variable <b>referencePageCount</b>)
+      in <br>
+      Assignments 4 and 5. Assignment 4 uses the gaussian distribution
+      of page references as handed<br>
+      out in Assignment 4's PageReplaceOptimal.stm and used in your
+      other Assignment 4 models.<br>
+      <br>
+      <b>&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; </b><b>sample(0,pageCount-1,
+
+
+
+
+        'gaussian', pageCount//2, pageCount//10)</b><br>
+      <br>
+      Each Assignment 5 model uses one of these four page reference
+      distributions across pages 0..499.<br>
+    </font>
+    <div align="center"><font size="+2"><img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 5._files/CSC343SP2024Final5Gaussian.png" alt="CSC343SP2024Final5Gaussian.png" width="1000" height="625"><br>
+        <b><br>
+          Figure 2: sample(0,pageCount-1, 'gaussian', pageCount//2,
+          pageCount//20) for Assignment 5</b><br>
+      </font></div>
+    <font size="+2"><br>
+      68.27% of 100,000 page references = 68,270 page references within
+      one standard deviation of 25 on each<br>
+      side of center, from page number 225 through page number 275, for
+      this <b>Gaussian</b> distribution of page references.<br>
+      The dark lines above mark this one-population-standard-deviation
+      boundary. Max 357 - Min 140 + 1 gives a<br>
+      range of 218 pages out of the pageCount of 500.<br>
+      <br>
+      The <b><font color="#cc0000">red quantile lines</font></b> above
+      show where 25% and 75% of the page references have accumulated,
+      reading<br>
+      the graph LEFT-to-RIGHT. The 50% point is the median. The
+      remaining graphs illustrate these 25%, 50%,<br>
+      and 75% is instances accumulated&nbsp; </font><font size="+2"><font size="+2">LEFT-to-RIGHT using similar red lines.</font><br>
+      <br>
+      Note that the above standard deviation of <b>pageCount//20</b> in
+      Assignment 5 is only half the range of<br>
+      <b>pageCount//10</b> in Assignment 4's Gaussian page reference
+      distribution. The next histogram is for<br>
+      Assignment 4's Gaussian page reference distribution.<br>
+      <br>
+    </font>
+    <div align="center"><font size="+2"><img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 5._files/CSC343SP2024Final5Gauss10.png" alt="CSC343SP2024Final5Gauss10.png" width="1000" height="625"><br>
+        <br>
+        <b>Figure 3: sample(0,pageCount-1, 'gaussian', pageCount//2,
+          pageCount//10) for Assignment 4</b><br>
+      </font></div>
+    <font size="+2"><br>
+      For Assignment 4, in contrast to Assignment 5's <b>Gaussian</b>
+      distribution above, 68.27% of 100,000 page<br>
+      references = 68,270 page references within one standard deviation
+      of 50 on each side of center, from page<br>
+      number 200 through page number 300. The dark lines above mark this
+      one-population-standard-deviation boundary.<br>
+      Max 463 - Min 29 + 1 gives a range of 462 pages out of the
+      pageCount of 500.<br>
+      <br>
+      The remaining histograms are for Assignment 5.</font>
+    <div align="center"><font size="+2"><img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 5._files/CSC343SP2024Final5Exponential.png" alt="CSC343SP2024Final5Exponential.png" width="1000" height="625"><br>
+        <br>
+        <b>Figure 4: sample(0,pageCount-1,'exponential',pageCount//10)</b><br>
+      </font></div>
+    <font size="+2"><br>
+      <br>
+      50% of 100,000 page references = 50,000 page references range from
+      page 0 through median page 34,<br>
+      a range of 35 pages, for this exponential distribution of page
+      references.The dark line above marks this<br>
+      median boundary. The remaining 50% lie in the decaying region to
+      the right of the line up through page 498.<br>
+      Max 498 - Min 0 + 1 gives a range of 499 pages out of the
+      pageCount of 500. The knee value pageCount//10<br>
+      in the sample call gives the mean value of 50.<br>
+      <br>
+    </font>
+    <div align="center"><font size="+2"><img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 5._files/CSC343SP2024Final5RevExponential.png" alt="CSC343SP2024Final5RevExponential.png" width="1000" height="625"><br>
+        <br>
+        <b>Figure 5:
+          sample(0,pageCount-1,'revexponential',(pageCount//10)*9)</b><br>
+      </font></div>
+    <font size="+2"><br>
+      50% of 100,000 page references = 50,000 page references range from
+      median page 465 through page 499,<br>
+      a range of 35 pages, for this exponential distribution of page
+      references.The dark line above marks this<br>
+      median boundary. The remaining 50% lie in the decaying region to
+      the left of the line down through page 10.<br>
+      Max 499 - Min 10 + 1 gives a range of 490 pages out of the
+      pageCount of 500. The knee value (pageCount//10)*9<br>
+      in the sample call gives the mean value of 450.<br>
+      <br>
+    </font>
+    <div align="center"><font size="+2"><img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 5._files/CSC343SP2024Final5Uniform.png" alt="CSC343SP2024Final5Uniform.png" width="1000" height="625"><br>
+        <b>Figure 6: sample(0,pageCount-1,'uniform')</b><br>
+      </font></div>
+    <font size="+2"><br>
+      Finally, the uniform page distribution hits all 500 pages in the
+      range with no <i>central tendency</i> or <i>focal point</i>.<br>
+      The mean and median values sit in the middle of this uniform
+      distributed range of page references.<br>
+      <br>
+      This final histogram shows magnitude of <b>SUM_findVictim</b>
+      values for combinations of the page replacement<br>
+      algorithm (<b>Optimal</b>, <b>FIFO</b>, and <b>LRU</b> as in
+      Assignment 4), <b>frameCount</b> (100 or 200 physical frames for
+      500 <br>
+      virtual pages as labeled in the figure), and page reference
+      distribution for Assignment 5 (<b>Gaussian</b>,<br>
+      <b>exponential</b>, <b>revexponential</b>, and <b>uniform</b> as
+      labeled below and as detailed in the figures above).<br>
+      <br>
+    </font>
+    <div align="center"><font size="+2"><img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 5._files/locality.png" alt="locality.png" width="1000" height="515"><br>
+        <br>
+        <br>
+        <b>Figure 7: SUM_findVictim as a function of
+          ReplacementAlgorithm_frameCount_PageDistribution</b><br>
+      </font></div>
+    <font size="+2"><br>
+      Below is the comma-separated-value (CSV) table with the values for
+      this Figure 7.<br>
+      <br>
+    </font>
+    <div align="center"><font size="+2"> </font></div>
+    <font size="+2"> </font><font size="+2"> </font>
+    <table style="border-collapse: collapse;width:249pt" width="249" cellspacing="0" cellpadding="0" border="0" align="center">
+      <!--StartFragment--><colgroup><col style="mso-width-source:userset;mso-width-alt:6869;width:161pt" width="161"></colgroup><colgroup><col style="mso-width-source:userset;mso-width-alt:3754;width:88pt" width="88"> </colgroup><tbody>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt;width:161pt" width="161" height="15"><b><font size="+2">Configuration</font></b></td>
+          <td style="width:88pt" width="88"><b><font size="+2">SUM_findVictim</font></b></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_100_gaussian</font></td>
+          <td align="right"><font size="+2">4213</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_200_gaussian</font></td>
+          <td align="right"><font size="+2">0</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_100_exponential</font></td>
+          <td align="right"><font size="+2">12070</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_200_exponential</font></td>
+          <td align="right"><font size="+2">1624</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_100_revexponential</font></td>
+          <td align="right"><font size="+2">11655</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_200_revexponential</font></td>
+          <td align="right"><font size="+2">1519</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_100_uniform</font></td>
+          <td align="right"><font size="+2">54201</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">Optimal_200_uniform</font></td>
+          <td align="right"><font size="+2">33932</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_100_gaussian</font></td>
+          <td align="right"><font size="+2">22506</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_200_gaussian</font></td>
+          <td align="right"><font size="+2">0</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_100_exponential</font></td>
+          <td align="right"><font size="+2">39628</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_200_exponential</font></td>
+          <td align="right"><font size="+2">11533</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_100_revexponential</font></td>
+          <td align="right"><font size="+2">38869</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_200_revexponential</font></td>
+          <td align="right"><font size="+2">10852</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_100_uniform</font></td>
+          <td align="right"><font size="+2">89334</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">FIFO_200_uniform</font></td>
+          <td align="right"><font size="+2">69027</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_100_gaussian</font></td>
+          <td align="right"><font size="+2">12118</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_200_gaussian</font></td>
+          <td align="right"><font size="+2">0</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_100_exponential</font></td>
+          <td align="right"><font size="+2">29747</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_200_exponential</font></td>
+          <td align="right"><font size="+2">4175</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_100_revexponential</font></td>
+          <td align="right"><font size="+2">28860</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_200_revexponential</font></td>
+          <td align="right"><font size="+2">3786</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_100_uniform</font></td>
+          <td align="right"><font size="+2">89295</font></td>
+        </tr>
+        <tr style="height:15.0pt" height="15">
+          <td style="height:15.0pt" height="15"><font size="+2">LRU_200_uniform</font></td>
+          <td align="right"><font size="+2">68929</font></td>
+        </tr>
+        <!--EndFragment-->
+      </tbody>
+    </table>
+    <div align="center"><font size="+2"> </font>
+      
+      <meta name="ProgId" content="Excel.Sheet">
+      <meta name="Generator" content="Microsoft Excel 14">
+      <link id="Main-File" rel="Main-File" href="file://localhost/private/var/folders/k5/r9_fp6mj6q5bp3sm8z2h7c6r8q159t/T/TemporaryItems/msoclip/0/clip.htm">
+      <link rel="File-List" href="file://localhost/private/var/folders/k5/r9_fp6mj6q5bp3sm8z2h7c6r8q159t/T/TemporaryItems/msoclip/0/clip_filelist.xml">
+      <style><font size="+2">
+<!--table
+	{mso-displayed-decimal-separator:"\.";
+	mso-displayed-thousand-separator:"\,";}
+@page
+	{margin:1.0in .75in 1.0in .75in;
+	mso-header-margin:.5in;
+	mso-footer-margin:.5in;}
+td
+	{padding-top:1px;
+	padding-right:1px;
+	padding-left:1px;
+	mso-ignore:padding;
+	color:black;
+	font-size:12.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Calibri, sans-serif;
+	mso-font-charset:0;
+	mso-number-format:General;
+	text-align:general;
+	vertical-align:bottom;
+	border:none;
+	mso-background-source:auto;
+	mso-pattern:auto;
+	mso-protection:locked visible;
+	white-space:nowrap;
+	mso-rotate:0;}
+-->
+</font></style><br>
+      <br>
+      <font size="+2"><font size="+2"><b>Table 1: SUM_findVictim as a
+            function of ReplacementAlgorithm_frameCount_PageDistribution</b></font></font><br>
+    </div>
+    <font size="+2"><br>
+      See <a moz-do-not-send="true" href="https://faculty.kutztown.edu/parson/secure/osconcepts9th/ch8.ppt"><b>Chapter
+
+
+
+          8</b></a> starting at slide 33 for discussions of <b>Paging</b>
+      and also the translation-lookaside-buffer (<b>TLB</b>), a<br>
+      register set in the memory management unit (<b>MMU</b>), and <b><a moz-do-not-send="true" href="https://faculty.kutztown.edu/parson/secure/osconcepts9th/ch9.ppt">Chapter
+
+
+
+          9 slides</a></b> regarding <i><b>Locality of Reference</b></i>,<br>
+      <i><b>Thrashing</b></i>, <i><b>Working Set</b></i>, &amp; <i><b>Belady's
+
+
+
+          Anomaly</b></i> in Q1-10.<br>
+      <br>
+      <a moz-do-not-send="true" href="https://faculty.kutztown.edu/parson/spring2024/README.Final5.txt"><b>README.Final5.txt</b></a><br>
+      <br>
+      Q1. Which one of the four page reference distributions in Table 1
+      -- gaussian, exponential, revexponential, or uniform<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp; -- exhibits the worst Locality of
+      Reference in terms of <b>SUM_findVictim</b> cost of page
+      replacement?<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; What numeric </font><font size="+2"><font size="+2">SUM_findVictim </font>pattern makes you
+      say that?<br>
+      <br>
+      Q2. Why does the </font><font size="+2"><font size="+2">page
+        reference distribution you chose in Q1 exhibit the </font></font><font size="+2"><font size="+2"><font size="+2">worst Locality of
+          Reference behavior?<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Refer to one or more of
+          Figure 2 through 6 in your answer.<br>
+          <br>
+        </font></font></font><font size="+2">Q3. Which one of the four
+      page reference distributions in Table 1 -- gaussian, exponential,
+      revexponential, or uniform<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp; -- exhibits the best Locality of
+      Reference in terms of SUM_findVictim cost of page replacement,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for a given frameCount value
+      of either 100 or 200? What numeric </font><font size="+2"><font size="+2">SUM_findVictim </font>pattern makes you say that?<br>
+      <br>
+      Q4. Why does the </font><font size="+2"><font size="+2">page
+        reference distribution you chose in Q3 exhibit the best</font></font><font size="+2"><font size="+2"><font size="+2"> Locality of Reference
+          behavior<br>
+          &nbsp;&nbsp;&nbsp; &nbsp;&nbsp; for a given frameCount value?
+          Refer to one or more of Figure 2 through 6 and their
+          discussions in your answer.<br>
+        </font></font></font><br>
+    <font size="+2"><font size="+2"><font size="+2"><font size="+2">Q5.
+            Which one of the four page reference distributions in Table
+            1 -- gaussian, exponential, revexponential, or uniform<br>
+            &nbsp;&nbsp;&nbsp; &nbsp;&nbsp; -- is the least sensitive to
+            the page replacement algorithm used (Optimal, FIFO, or LRU)?<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; What numeric </font><font size="+2"><font size="+2">SUM_findVictim </font>pattern
+            makes you say that?<br>
+            <br>
+          </font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2">Q6. Which one or more of the four
+            page reference distributions in Table 1 -- gaussian,
+            exponential, revexponential,<br>
+            &nbsp;&nbsp;&nbsp; &nbsp;&nbsp; or uniform -- give
+            greater-than-linear improvements when the frameCount doubles
+            from 100 to 200?<br>
+            &nbsp;&nbsp;&nbsp; &nbsp;&nbsp; In other words, when
+            frameCount doubles from 100 to 200, cost in terms of
+            SUM_findVictim is reduced<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; by more than half. Why
+            do it or they give greater-than-linear improvement?<br>
+            <br>
+            Q7. Which property dominates the minimization of </font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2">SUM_findVictim
+
+
+
+                    for a given frameCount value, page replacement<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; algorithm or
+                    locality of reference? Why? I am not looking for a
+                    specific </font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2">page
+
+
+
+                    replacement algorithm like<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (Optimal, FIFO,
+                    LRU), nor&nbsp;</font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2">locality of
+                                    reference</font></font></font></font></font></font></font></font>
+                    like (</font></font></font></font></font></font></font></font><font size="+2">gaussian, exponential, revexponential, uniform), but<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rather just "</font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><u>page
+
+
+
+                      replacement algorithm</u>" OR "</font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><u>locality
+
+
+
+                      of reference</u>". Justify your answer in terms of
+                    Table 1<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and optionally
+                    the figures.<br>
+                    <br>
+                    Q8. Do any of the frameCount increases from 100 to
+                    200 in Table 1 exhibit Belady's Anomaly as discussed
+                    in<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Chapter 9
+                    slides? If so, cite an example from Table 1 that
+                    shows </font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2">Belady's
+
+
+
+                    Anomaly.<br>
+                    <br>
+                    Q9. From what value to what value does the </font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2">translation-lookaside-buffer (<b>TLB</b>)</font></font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2">
+                    register set provide a MAPPING?<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Why is it
+                    important to maintain this mapping in a register and
+                    not just in the page table of the process?<br>
+                    <br>
+                    Q10. </font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2">What
+
+
+
+                    status bit or bits would be added to the TLB to
+                    support the LRU and LRUDirty page replacement<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    algorithms without forcing the kernel to consult the
+                    page table on every application memory access?</font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2"> </font></font> </font><font size="+2"> </font>
+  
+
+</body><grammarly-desktop-integration data-grammarly-shadow-root="true"><template shadowrootmode="open"><style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style><div aria-label="grammarly-integration" role="group" tabindex="-1" class="grammarly-desktop-integration" data-content="{&quot;mode&quot;:&quot;full&quot;,&quot;isActive&quot;:true,&quot;isUserDisabled&quot;:false}"></div></template></grammarly-desktop-integration></html>
