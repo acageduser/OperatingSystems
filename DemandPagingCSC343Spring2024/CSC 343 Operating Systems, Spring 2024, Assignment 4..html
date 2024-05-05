@@ -1,0 +1,226 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!-- saved from url=(0073)https://faculty.kutztown.edu/parson/spring2024/CSC343Spring2024Assn4.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    
+    <title>CSC 343 Operating Systems, Spring 2024, Assignment 4.</title>
+    
+    
+    
+    
+  </head>
+  <body data-new-gr-c-s-check-loaded="14.1169.0" data-gr-ext-installed="">
+    <font size="+2"><b>Assignment 4</b> on Using Reference Strings to
+      simulate page replacement algorithms in demand paging,<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <u><b>make </b></u><b><u>turnitin</u>
+      </b>due by <b>11:59 PM on Thursday May 2</b>.<br>
+      <b><font color="#660000"><br>
+          Outline of editing and testing stages:<br>
+          1. Copy&nbsp; </font></b></font><font size="+2"><b><font color="#660000"><font size="+2">PageReplaceOptimal.stm to </font></font></b></font><font size="+2"><b><font color="#660000"><font size="+2"><font size="+2">PageReplaceFIFO.stm
+
+
+              and follow all instructions.<br>
+              2. When <u>make testFIFO</u> passes, copy </font></font></font></b></font><font size="+2"><b><font color="#660000"><font size="+2"><font size="+2"><font size="+2">PageReplaceFIFO.stm to </font></font></font></font></b></font><font size="+2"><b><font color="#660000"><font size="+2"><font size="+2"><font size="+2"><font size="+2">PageReplaceLRU.stm &amp;
+                  re-read / follow ALL instructions.<br>
+                  3. When <u>make testLRU</u> passes, copy
+                  PageReplaceLRU.stm to PageReplaceLRUDirty.stm &amp;
+                  re-read / follow ALL instructions.<br>
+                  4. Use <u>make testLRUDirty</u>, then <u>make clean
+                    test</u>, then edit README.txt.<br>
+                  <br>
+                  Make sure to assign into the variable <i>victimPage </i>in
+
+
+                  STUDENT requirements C, D, and E in their respective
+                  STM files.<br>
+                </font></font></font></font></font></b>&nbsp;<br>
+    </font><font size="+2">Perform the following steps to get my
+      handout. You will code and test on mcgonagall, to which you can
+      ssh mcgonagall from acad. <br>
+      <b>Make sure to answer all questions in README.txt before <u>make
+          turnitin</u></b>.<br>
+      Each day late costs a 10% penalty and I cannot accept solutions
+      after I go over mine in class.<br>
+      <br>
+    </font>
+    <blockquote><b><font size="+2">cd $HOME # or start out in your login
+          directory</font></b><b><br>
+      </b><b><font size="+2">mkdir OpSys # All of this semester’s work
+          goes under here, skip if you did it before.</font></b><b><br>
+      </b><b><font size="+2">cd ./OpSys</font></b><b><br>
+      </b><font size="+1"><b>cp ~parson/OpSys/</b><b>DemandPagingCSC343Spring2024.problem.zip
+          DemandPagingCSC343Spring2024.problem.zip</b></font><b><br>
+      </b><b><font size="+2">unzip
+          DemandPagingCSC343Spring2024.problem.zip</font></b><b><br>
+      </b><b><font size="+2">cd ./DemandPagingCSC343Spring2024</font></b><b><br>
+      </b><b><font size="+2">make clean testOptimal</font></b><br>
+    </blockquote>
+    <font size="+2">As before, if you get a run-time error in terms of
+      the compiled __codeTable__ like this:<br>
+      <br>
+      &nbsp; File "PageReplaceOptimal.py", line 372, in run<br>
+      &nbsp;&nbsp;&nbsp; exec(<b>__codeTable__[13]</b>,globals,locals)<br>
+      &nbsp; File "nofile", line 1, in &lt;module&gt;<br>
+      <b>NameError: name 'yang' is not defined</b><br>
+      0.47user 0.03system 0:00.57elapsed 89%CPU (0avgtext+0avgdata
+      14556maxresident)k<br>
+      72inputs+8outputs (0major+6140minor)pagefaults 0swaps<br>
+      make: *** [testOptimal] Error 1<br>
+      <br>
+      Run decode.py against that model's .py file and the code location
+      [N] :<br>
+      <br>
+      $ <b>./decode.py PageReplaceOptimal.py 13</b><br>
+      __codeTable__[13] = compile('ying = yang','nofile','exec'),<br>
+      <br>
+      I have implemented the textbook's Optimal page replacement
+      algorithm in </font><font size="+2"><font size="+2">PageReplaceOptimal.stm.
+
+
+
+
+
+
+
+
+        You will implement the other three in this order.<br>
+        <br>
+      </font>PageReplaceOptimal.stm&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; Optimal page replacement based on future
+      knowledge.<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp; <b>make testOptimal</b> tests this
+      model.<br>
+      PageReplaceFIFO.stm&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; FIFO page replacement based
+      on history of page accesses.<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp; <b>make testFIFO</b> tests this model.
+      Run it when you complete coding this one.<br>
+      PageReplaceLRU.stm&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; Least recent used page
+      replacement based on history of page accesses.<br>
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp; </font><font size="+2"><font size="+2"><b>make
+
+
+
+
+          testLRU</b> tests this model. Run it when you complete coding
+        this one.<br>
+      </font>PageReplaceLRUDirty.stm&nbsp; &nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp; Least recent used page replacement based on
+      history of page accesses and unmodified / modified page status.<br>
+    </font><font size="+2"><font size="+2"><font size="+2"><b>&nbsp;&nbsp;&nbsp;
+
+
+
+
+            &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+            &nbsp;&nbsp;&nbsp;&nbsp; make testLRUDirty</b> tests this
+          model. Run it when you complete coding this one.<br>
+          <br>
+        </font></font>Edit the README.txt file when <b>make clean test</b>
+      works without errors.<br>
+      There is some overhead in the simulation mechanics that could have
+      been tuned, but I didn't want to make the code too complicated.<br>
+      That overhead does not affect the fidelity of the simulations.<br>
+      <br>
+      STUDENT instructions in </font><font size="+2"><font size="+2"><font size="+2"><b>PageReplaceOptimal.stm</b> guide your development
+          stages. From the textbook slides:<br>
+          <br>
+          <img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 4._files/Slide30ReferenceStrings.jpg" alt="Reference Strings" width="723" height="538"><br>
+          <br>
+          <b>referencePageCount</b>=100,000 page number references in <b>referencePageList
+
+
+
+
+
+
+
+
+          </b>implement the <b>Reference String</b>.<br>
+          <br>
+          <img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 4._files/referencePageList100000.jpg" alt="Gaussian" width="724" height="427"><br>
+          <br>
+          Above is the <b>Gaussian Distribution of page references</b>,
+          giving pretty good <b>Locality of Reference</b>.<br>
+        </font></font></font><br>
+    <font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 4._files/PageOptimal.jpg" alt="Optimal" width="700" height="527"><br>
+                <br>
+                Handout <b>PageReplaceOptimal.stm</b> is already
+                working. It is your starting point.<br>
+              </font></font></font>&nbsp;<br>
+          The changes in </font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><b>PageReplaceFIFO.stm</b>
+            are worth 26% of the assignment.<br>
+            <br>
+            <img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 4._files/PageFIFO.jpg" alt="FIFO" width="700" height="526"><br>
+          </font></font></font></font><br>
+    <font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><font size="+2"><br>
+                  Page numbers in referenceQueues[0] and
+                  referenceQueues[1] implement the FIFO queues of page
+                  reference history.<br>
+                  <br>
+                  The changes in </font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><b>PageReplaceLRU.stm</b>
+                    are worth 21% of the assignment.<br>
+                    <br>
+                    <img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 4._files/PageLRU.jpg" alt="LRU" width="700" height="527"><br>
+                    <br>
+                  </font></font></font></font></font></font></font></font><font size="+2"><font size="+2"><font size="+2">The changes in </font></font></font><font size="+2"><font size="+2"><font size="+2"><font size="+2"><b>PageReplaceLRUDirty.stm</b>
+            are worth 26% of the assignment.<br>
+            <br>
+            There is no slide for LRU page replacement that uses the
+            "dirty" (a.k.a. "modified") bit in the resident page status
+            to prefer selecting pages that have not been modified since
+            the most recent page-in.<br>
+            They do not incur page-out over head once they are on the
+            paging disk ("swap device").<br>
+            <br>
+          </font></font></font></font><font size="+2">The three questio</font><font size="+2"><font size="+2"><font size="+2"><font size="+2">ns in
+            README.txt are worth 9% each, totaling 100% of the
+            assignment.<br>
+            We will use the final exam period to go over the solution.<br>
+            <br>
+            Here is the state machine diagram. You do not need to add or
+            remove any transitions.<br>
+            <br>
+            <img moz-do-not-send="true" src="./CSC 343 Operating Systems, Spring 2024, Assignment 4._files/PageReplaceFIFO.jpg" alt="stm" width="700" height="369"><br>
+          </font></font></font></font>
+    <div style="margin-left: 40px;"><font size="+2"> <br>
+      </font></div>
+    <br>
+  
+
+</body><grammarly-desktop-integration data-grammarly-shadow-root="true"><template shadowrootmode="open"><style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style><div aria-label="grammarly-integration" role="group" tabindex="-1" class="grammarly-desktop-integration" data-content="{&quot;mode&quot;:&quot;full&quot;,&quot;isActive&quot;:true,&quot;isUserDisabled&quot;:false}"></div></template></grammarly-desktop-integration></html>
