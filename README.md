@@ -1,6 +1,21 @@
 # OperatingSystems
 CSC 343 Operating Systems Coursework
 
+#
+# Key Skills Demonstrated
+
+- **State Machine Design and Simulation**: Designed and implemented state machines to simulate operating system behaviors such as scheduling and page replacement, using a custom STM language.
+- **Thread Synchronization**: Managed synchronization challenges between multiple threads and processes in a simulated environment, ensuring proper execution flow and state transitions.
+- **Operating Systems Concepts**: Applied core concepts of operating systems including preemptive and non-preemptive scheduling, FIFO, LRU, and Optimal page replacement algorithms in a controlled, simulated setting.
+- **Problem Solving and Debugging**: Utilized systematic debugging and problem-solving strategies to identify and correct issues within simulation code, enhancing understanding of how operating system components interact.
+- **Performance Analysis**: Analyzed and compared the performance of different scheduling and page replacement algorithms to determine their efficiency and suitability for various operating conditions.
+- **Documentation**: Thoroughly documented code changes, simulation results, and algorithm behaviors in README files to clarify the development process and results for academic evaluation and peer review.
+
+This project is intended for educational purposes only.
+#
+#
+
+
 ### prisonerd2024:
 The first project introduced me to state machines through the Iterated Prisoner's Dilemma simulation. I developed a program that dynamically adjusted its strategy based on the game's outcomes, state transitions, and variable initializations. This exercise offered a visual for the decision-making processes within a simulated environment.
 
